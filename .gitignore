@@ -1,0 +1,10 @@
+*.pyc
+.idea
+venv
+uploads
+log
+migrations
+app/admin/views.py
+config/__init__.py
+test.py
+newrelic.ini
