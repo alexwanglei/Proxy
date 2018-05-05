@@ -64,8 +64,8 @@ LOGCONFIG = {
         }
     },
     'root': {
-        'level': 'DEBUG',
-        'handlers': ['console', 'debug_file_handler']
+        'level': 'INFO',
+        'handlers': ['console', 'info_file_handler']
     }
 }
 

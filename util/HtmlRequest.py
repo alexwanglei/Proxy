@@ -4,10 +4,17 @@
 # @Author: Wanglei
 # @Date  : 2018/5/1
 # @Desc  :
-
+import time
 import random
 import requests
-import time
+from lxml import etree
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+
+
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+
 
 class HtmlRequest:
 
@@ -18,6 +25,7 @@ class HtmlRequest:
         :return:
         """
         ua_list = [
+            'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.75 Safari/537.36',
             'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.101',
             'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.122',
             'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.71',
@@ -38,19 +46,20 @@ class HtmlRequest:
         """
         return {'User-Agent': self.user_agent,
                 'Accept': '*/*',
+                'Accept - Encoding': 'gzip, deflate, br',
                 'Connection': 'keep-alive',
-                'Accept-Language': 'zh-CN,zh;q=0.8'}
+                'Accept-Language': 'zh-CN,zh;q=0.9'}
 
-    def get(self, url, header=None, retry_time=3, timeout=10, retry_interval=5):
+    def get(self, url, header=None, retry_time=3, proxies=None, timeout=10, retry_interval=0, verify=False):
         headers = self.header
         if header and isinstance(header, dict):
             headers.update(header)
         while True:
             try:
-                r = requests.get(url, headers=headers, timeout=timeout)
+                r = requests.get(url, headers=headers, proxies=proxies, timeout=timeout, verify=verify)
                 if not r.ok:
                     raise Exception
-                return r.text
+                return r
             except Exception as e:
                 print(e)
                 retry_time -= 1
@@ -58,3 +67,53 @@ class HtmlRequest:
                     # 多次请求失败
                     return None
                 time.sleep(retry_interval)
+
+
+    def post(self, url, data, headers):
+        try:
+            r = requests.post(url, data, headers=headers)
+            return r
+        except Exception as e:
+            print(e)
+
+if __name__ == "__main__":
+    headers = {
+        'Host': 'www.gatherproxy.com',
+        'Proxy-Connection': 'keep-alive',
+        'Origin': 'http://www.gatherproxy.com',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        'Referer': 'http://www.gatherproxy.com/proxylist/country/?c=China',
+        'Accept-Encoding': 'gzip, deflate',
+        'Accept-Language': 'zh-CN,zh;q=0.9'
+
+    }
+    html_request = HtmlRequest()
+    url = 'http://www.gatherproxy.com/proxylist/country/?c=China'
+    data = {
+        "Country": "china",
+        "PageIdx": 1,
+        "Filter": '',
+        "Uptime": 0
+    }
+    response = html_request.post(url, data, headers)
+    proxylist = []
+    root = etree.HTML(response.text)
+    proxys = root.xpath(".//table[@id='tblproxy']/tr[position()>2]")
+    for proxy in proxys:
+        try:
+            ip_text = proxy.xpath(".//td[2]/script")[0].text
+            ip = ip_text.split("'")[1]
+            port_text = proxy.xpath(".//td[3]/script")[0].text
+            port = str(int(port_text.split("'")[1], 16))
+
+        except Exception as e:
+            print(e)
+            continue
+        proxy = ":".join([ip, port])
+        proxylist.append(proxy)
+    print(proxylist)
+
+
+
+
